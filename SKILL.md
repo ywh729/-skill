@@ -1,520 +1,468 @@
 ---
-name: diagram-drawing
-description: >-
-  绘制 ER 图（传统放射状风格）、流程图（GB/T 1526 国标）、组织架构图、UML 类图。
-  支持 Python matplotlib 绘制，输出 300dpi PNG + 矢量 PDF/SVG。
-  触发词: ER图, E-R图, 流程图, 组织架构图, 结构图, 模块图, UML图,
-  画个流程图, 帮我画ER图, 改进此流程图, 改进此ER图, 数据库设计图,
-  算法流程图, 业务流程图, 系统结构图, 功能模块图.
-triggers:
-  - ER图
-  - E-R图
-  - 流程图
-  - 组织架构图
-  - 结构图
-  - 模块图
-  - UML类图
-  - 画流程图
-  - 画ER图
-  - 改进流程图
-  - 改进ER图
-  - 数据库设计图
-  - 算法流程图
-  - 业务流程图
-  - 系统结构图
-  - 功能模块图
+name: "ppt-speech-writer"
+description: "Read a real .pptx using text extraction, OOXML inspection, slide rendering, OCR, visual inventory, and vision-capable screenshot review; then write academic speaker notes grounded in every visible slide element, generate a complete display-version document, and inject clean notes into the PowerPoint notes pane. Use when the user wants speaker notes, presenter notes, a speech script, narration, or annotated notes for an existing PowerPoint deck, especially when slides contain images, charts, tables, SmartArt, axes, legends, or screenshot text."
 ---
 
-# Diagram Drawing Skill
+# PPT Speech Writer
 
-## 概述
+You are a senior academic presentation coach. This skill writes slide-by-slide speaker notes for an existing `.pptx`, grounded in the actual visible deck. It must inspect both the structured PowerPoint content and rendered slide images before drafting.
 
-本 Skill 用于绘制符合国家标准和国际规范的学术/工程图表，包括：
+## Skill Directory
 
-- **ER 图**（实体关系图）：**传统放射状风格**（实体矩形居中，属性椭圆向外辐射）
-- **流程图**（Flowchart）：GB/T 1526-1989 国标 / ISO 5807 国际标准
-- **组织架构图 / 模块图**：层级式树状结构
-- **UML 类图**：面向对象设计标准
+All scripts are located at `.trae/skills/ppt-speech-writer/scripts/`. When running commands, use the absolute path or the relative path from the workspace root.
 
-所有图表均使用 Python + matplotlib 绘制，支持多格式输出（PNG/PDF/SVG），确保论文和设计文档的出版级质量。
+## Grounding Contract
 
----
+Do not rely on text boxes alone. A slide is considered read only after these evidence sources have been checked:
 
-## A. 适用场景
+1. Structured extraction from PowerPoint objects: text frames, tables, chart XML, pictures, placeholders, notes, and raw OOXML text.
+2. Rendered slide screenshots, one image per slide.
+3. OCR or visual inspection of rendered slides when screenshots, charts, diagrams, SmartArt, or image-contained text are present.
+4. A visible-element inventory for every slide.
+5. Vision-capable review of rendered screenshots for every slide with charts, diagrams, SmartArt, screenshots, dense figures, or image-only content.
 
-| 场景 | 说明 |
-|------|------|
-| 论文/毕业设计 | ER 图、流程图、系统架构图的规范绘制 |
-| 软件工程文档 | UML 类图、用例图、时序图等 |
-| 需求分析阶段 | 业务流程图、数据流图 |
-| 数据库设计 | E-R 图、数据库结构图 |
-| 技术方案文档 | 系统架构图、功能模块图 |
-| 项目汇报材料 | 组织架构图、技术路线图 |
+If a visible element cannot be interpreted reliably, say so and ask the user before writing notes for that slide. Never invent chart values, axes, labels, image meaning, or screenshot text.
 
----
+## Language Lock
 
-## B. 三大图表类型及标准规范
+Do not infer the output language from the user's chat language. Before writing any notes, explicitly confirm exactly one output language:
 
-### B1. ER 图（实体关系图）—— 传统放射状风格
+- English
+- Chinese
+- same as the deck language
+- another user-specified language
 
-**适用标准**：**传统放射状ER图**（Traditional Star/Radial Style）
+Never draft speaker notes, display notes, glossary entries, timing-table labels, transitions, coverage notes, or injected clean notes until the output language is confirmed.
 
-这是国内教材和论文中最常用的 ER 图画法，特点是：
-- **实体**用矩形框表示，仅包含实体名称
-- **属性**用椭圆表示，像太阳光芒一样**放射状分布在实体矩形外围**
-- **关系**用菱形表示，位于两个实体之间
-- 所有元素通过直线连接
+Once confirmed, use that language consistently across the entire deliverable. Technical terms may remain in their canonical form, such as `PPO`, `AUROC`, `PowerPoint`, `SmartArt`, or dataset names, but sentence grammar, explanations, labels, table headers, and transitions must follow the selected language.
 
-#### 符号体系
+If the selected language is English:
 
-| 元素 | 形状 | 填充色 | 边框色 | 说明 |
-|------|------|--------|--------|------|
-| 实体 (Entity) | 矩形（居中，仅含名称） | `#F5F5F5` 浅灰 | `#000000` 黑色 | 表示现实世界中的对象或概念 |
-| 关系 (Relationship) | 菱形 | `#F5F5F5` 浅灰 | `#000000` 黑色 | 表示实体间的联系 |
-| 属性 (Attribute) | 椭圆（放射状分布） | `#FFFFFF` 白色 | `#000000` 黑色 | 描述实体的特征 |
-| 主键属性 (PK) | 椭圆 + `__` 前缀 | `#FFFFFF` 白色 | `#000000` 黑色 | 唯一标识实体的属性 |
+- Write all prose, transitions, labels, glossary definitions, timing-table headers, and coverage notes in English.
+- If a slide contains Chinese or Japanese text, quote only the necessary original term and immediately explain it in English.
+- Do not write mixed sentences such as "This model 说明了 robustness."
 
-#### 布局结构示意
+If the selected language is Chinese:
 
-```
-         ○ 属性A
-        /
-    ○ 属性B —— ▭ 实体名称 —— ○ 属性C
-        \         |
-         ○ 属性D  |  1
-                  ▭———◆ 关系 ◆———▭  n
-                                    |
-                              ○ 属性E / ○ 属性F ...
-```
+- Write all prose, transitions, labels, glossary definitions, timing-table headers, and coverage notes in Chinese.
+- Keep standard technical names in English only when they are the canonical term.
+- Do not write mixed sentences such as "这个 model shows strong robustness."
+- Embed English technical terms naturally in Chinese syntax, for example: "`AUROC` 用来衡量模型区分正负样本的能力。"
 
-**关键布局规则**：
-1. **实体矩形居中**：每个实体的矩形框位于该实体区域的正中心
-2. **属性椭圆环绕**：所有属性以椭圆形式均匀分布在实体矩形的四周（上/下/左/右/斜向）
-3. **连线从中心出发**：每条属性连线从实体矩形中心向外辐射到对应属性椭圆
-4. **避免重叠**：属性椭圆之间保持足够间距，不与连线交叉
+## Slide Prose Style
 
-#### 防重叠间距规则（重要！）
+Do not begin slide notes by describing the slide object. Begin with the claim, implication, finding, method role, or argument step.
 
-这是 ER 图质量的核心要求，**必须严格遵守**：
+Banned English openings:
 
-| 规则项 | 要求 | 最小值 |
-|--------|------|--------|
-| **画布尺寸** | 根据实体和属性数量动态调整 | 3 实体建议 ≥ 26×16 英寸 |
-| **实体间距** | 相邻实体矩形中心距离 | ≥ 9 个单位 |
-| **属性椭圆间距** | 同一实体相邻属性椭圆中心距 | ≥ 3.0 单位（椭圆宽 2.4） |
-| **跨实体属性间距** | 不同实体的属性椭圆之间 | ≥ 2.5 单位，严禁接触 |
-| **属性与连线间距** | 属性椭圆边缘与连线 | ≥ 0.5 单位 |
+- "This slide shows..."
+- "This slide presents..."
+- "This slide explains..."
+- "On this slide..."
+- "Here we can see..."
+- "The slide is about..."
 
-**布局策略——避免中间区域拥挤**：
-1. **用户实体**：属性主要分布在**上方、左侧、正下方**；右侧尽量不放属性（留给连线通道）
-2. **关系菱形**：属性放在**正上方、左下方、右下方、正下方**；避开与相邻实体属性的冲突区
-3. **车位/右侧实体**：属性主要分布在**上方、右侧、正下方**；左侧尽量不放属性
-4. **多实体场景**：增大画布尺寸，拉大实体间距离，宁可留白也不要挤在一起
+Banned Chinese openings:
 
-**属性放射分布推荐模式**（按优先级排序）：
-```
-       上方1        上方2        上方3
-            \         |         /
-    左侧 ——▭ 实体 —— 右侧(慎用)
-            /         |         \
-       下方左      正下方      下方右
-```
+- "这一页展示了..."
+- "这一页说明了..."
+- "这一页主要讲..."
+- "在这一页中..."
+- "我们可以看到..."
+- "这页是关于..."
 
-#### 基数标注规则
+Preferred pattern:
 
-| 基数类型 | 含义 | 连线标注 |
-|----------|------|----------|
-| 1:1 | 一对一 | 两端均标 "1" |
-| 1:n | 一对多 | 一端标 "1"，多端标 "n" 或 "m" |
-| m:n | 多对多 | 两端分别标 "m" 和 "n" |
+- Weak: "This slide shows the optimization setup."
+- Strong: "The experiments use a fixed optimization protocol so later comparisons stay controlled."
+- Weak: "这一页展示了实验设置。"
+- Strong: "实验设置被固定下来，是为了保证后续结果比较具有可解释性。"
 
-#### 连线规则
+Write speaker notes as a coherent oral argument, not as captions for slides. Each page should open with a content-level thesis sentence, then explain the visible evidence that supports it.
 
-- ✅ 使用**直线**连接元素
-- ❌ 禁止使用曲线连接
-- **属性→实体连线**：从属性椭圆边缘连到实体矩形中心（辐射状）
-- **实体→关系连线**：从实体矩形边缘连到关系菱形的顶点
-- 基数标注应靠近对应实体端
+## Timing And Pacing Model
 
-#### 主键标注方式
+Speaker notes must fit the spoken duration when read aloud at a realistic pace, with pauses. Do not treat raw word count as speaking time. Plan against pause-adjusted rates, then verify the total against the clock.
 
-- 在主键属性名前加 `__` 双下划线前缀，如 `__用户ID`
-- 或在属性文本下方加下划线
+### Planning rates (pauses already absorbed)
 
-#### ER 图绘制注意事项
+These rates already account for natural pauses, breaths, and emphasis. Use them as the default budget:
 
-1. **实体命名规范**：使用名词单数形式，如"用户"、"订单"、"车位"
-2. **避免冗余实体**：不要出现"XX表"等物理存储相关的命名
-3. **属性数量适中**：每个实体列出 5-8 个核心属性即可
-4. **主键突出显示**：主键属性必须加 `__` 前缀标识
-5. **布局美观对称**：属性椭圆围绕实体均匀分布，整体呈放射状
-6. **简洁配色**：以黑白灰为主，浅灰填充白色背景，线条清晰
-7. **【核心】杜绝重叠**：
-   - 属性椭圆之间**不得接触或重叠**
-   - 不同实体的属性之间**必须留出清晰间距**
-   - 属性与连线之间**不得交叉穿过**
-   - 生成后必须目视检查，如有重叠则增大画布/调整坐标重绘
+| Output language | Planning rate | Notes |
+|-----------------|---------------|-------|
+| English | 110 words/min | Academic delivery. Range 100–130. Use 100 for dense or non-native delivery. |
+| Chinese | 165 字/min | Academic delivery. Range 150–180. Count Chinese characters, not words. |
 
----
+Calibration rule: if the speaker says a previous talk ran long, trust the measured pace over the default. Example: a 15-minute talk that actually took 30 minutes ran at `1800 ÷ 30 = 60` effective words per minute. When the speaker reports such a history, recompute with their real rate instead of the table default.
 
-### B2. 流程图（Flowchart）
+### Reserve time before budgeting words
 
-**适用标准**：
-- **GB/T 1526-1989**《信息处理 数据流程图图形符号》
-- **ISO 5807:1985** Information processing — Documentation symbols
+Do not spend the whole clock on words. From the target duration, subtract:
 
-#### 标准符号规范
+- Slide transitions: about 3 seconds per slide.
+- Deliberate `[PAUSE]` markers: about 1.5 seconds each.
+- A global safety buffer of 10–15% for audience reactions, demos, and overruns.
 
-| 符号名称 | 形状 | 含义 | 填充色 | 边框色 | 线宽 |
-|----------|------|------|--------|--------|------|
-| 起止符 | 圆角矩形（椭圆） | 开始/结束 | `#E8EAF6` | `#3949AB` | 1.5 |
-| 处理框 | 矩形 | 操作/处理步骤 | `#FFFFFF` | `#000000` | 1.5 |
-| 判断框 | 菱形 | 条件判断 | `#FFF9C4` | `#F57C00` | 1.5 |
-| 文档符号 | 横线矩形（波浪底边） | 输入/输出文件 | `#E3F2FD` | `#1976D2` | 1.5 |
-| 注释符号 | 开口矩形 | 说明/注释 | `#FFF8E1` | `#FFA000` | 1.0 |
-| 数据存储 | 右侧开口矩形 | 数据库/文件存储 | `#F3E5F5` | `#7B1FA2` | 1.5 |
-| 并行处理 | 双横线 | 同步/并行操作 | `#E0F2F1` | `#00796B` | 1.5 |
+Budget formula for a talk of `T` minutes across `N` slides:
 
-#### 连线规则（正交布线）
-
-```
-✅ 正确做法：
-┌─────┐
-│ 开始 │
-└──┬──┘
-   │
-   ▼
-┌─────────┐
-│  输入数据 │
-└──┬──────┘
-   │
-   ▼
-┌─────────┐
-│  判断条件 │──是──▶ [处理A]
-└────┬────┘
-     │ 否
-     ▼
-  [处理B]
-
-❌ 错误做法：
-- 使用曲线连接
-- 斜线直接连接非相邻节点
-- 缺少箭头指示方向
-- 判断分支未标注"是/否"
+```text
+gross_seconds   = T * 60
+reserved        = 3 * N  +  1.5 * pause_count  +  0.12 * gross_seconds
+usable_seconds  = gross_seconds - reserved
+english_word_budget = usable_seconds / 60 * 110
+chinese_char_budget = usable_seconds / 60 * 165
 ```
 
-#### 布局规则
+Worked example — 15-minute English talk, 12 slides, ~24 planned pauses:
 
-1. **主流向**：从上到下（垂直布局优先）
-2. **次流向**：从左到右（水平布局辅助）
-3. **判断节点**：出口必须在上下左右四个正交方向
-4. **终止节点**：每个流程必须有明确的结束点
-5. **禁止死循环**：循环结构必须包含退出条件
-
----
-
-### B3. 组织架构图 / 模块图
-
-**适用标准**：层级式树状结构
-
-#### 层级样式定义
-
-| 层级 | 形状 | 填充色 | 边框色 | 圆角 | 字号 |
-|------|------|--------|--------|------|------|
-| 顶层标题 | 大矩形 | `#37474F` | `#263238` | 8px | 14pt bold |
-| 一级模块 | 中等矩形 | `#546E7A` | `#37474F` | 6px | 12pt bold |
-| 二级子模块 | 小矩形 | `#78909C` | `#546E7A` | 4px | 11pt |
-| 三级功能 | 小矩形 | `#B0BEC5` | `#78909C` | 3px | 10pt |
-
-#### 连接方式
-
-- 使用**正交折线**（orthogonal routing）
-- 从父节点底部中心到子节点顶部中心
-- 父节点到多个子节点时分叉为树状结构
-- 同级节点横向排列，间距均匀（建议 50-80px）
-
-#### 典型架构模式
-
-**三层架构示例**：
-```
-┌─────────────────────────────────┐
-│         表现层 (Presentation)    │
-│  ┌──────┐ ┌──────┐ ┌──────┐    │
-│  │Web页 │ │移动端│ │API接口│    │
-│  └──────┘ └──────┘ └──────┘    │
-└───────────────┬─────────────────┘
-                │
-┌───────────────▼─────────────────┐
-│         业务逻辑层 (Business)     │
-│  ┌────────┐ ┌────────┐          │
-│  │用户管理│ │订单管理│ ...       │
-│  └────────┘ └────────┘          │
-└───────────────┬─────────────────┘
-                │
-┌───────────────▼─────────────────┐
-│         数据访问层 (Data Access)  │
-│  ┌────────┐ ┌────────┐          │
-│  │DAO层   │ │ORM映射 │ ...       │
-│  └────────┘ └────────┘          │
-└─────────────────────────────────┘
+```text
+gross_seconds  = 900
+reserved       = 36 (transitions) + 36 (pauses) + 108 (12% buffer) = 180
+usable_seconds = 720
+word_budget    = 720 / 60 * 110 ≈ 1,320 words
 ```
 
----
+So a 15-minute English talk targets roughly 1,300–1,400 spoken words, not 1,800. The earlier 1,800-word draft was about a third over budget, which is exactly why it overran. Apply the same arithmetic with the Chinese rate for a Chinese talk.
 
-## C. 技术实现要求
+### Per-slide budget
 
-### C1. 编程语言与库
+Distribute the total budget by content weight, not evenly. A title or section divider may take 30–50 words; a dense results slide may take 150–180. Record each slide's target in the timing table `budget` field and the actual count in `word_count`, and the number of `[PAUSE]` markers in `pauses`. If a slide's `word_count` exceeds its `budget`, compress the prose or recommend splitting the slide. Never let total `word_count` exceed the computed budget.
 
-```python
-# 必要依赖
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.patches import FancyBboxPatch, Circle, Ellipse, Polygon, Rectangle
-import numpy as np
+### Writing to the budget in both languages
+
+- Keep spoken sentences short, under 20 words. 中文每句也尽量短，便于换气。
+- Place `[PAUSE]` after a thesis sentence or before a key number, not at random.
+- Do not pad to hit a budget. A slightly short talk is safer than an overrun.
+- Compute the Chinese and English drafts against their own language rate. Do not reuse the English word count as the Chinese character count; the same idea is usually fewer characters in Chinese than words in English.
+
+## Required Workflow
+
+Prepend all script paths with `.trae/skills/ppt-speech-writer/scripts/` when running commands (e.g. `python .trae/skills/ppt-speech-writer/scripts/read_slides.py`).
+
+### 1. Create Output Layout
+
+Keep user-facing deliverables separate from intermediate evidence files.
+
+Use this layout:
+
+```text
+<deck-stem>-speaker-output/
+├── <deck-stem>-with-notes.pptx
+├── <deck-stem>-display.docx
+├── <deck-stem>-display.md              # only if python-docx is unavailable
+├── <deck-stem>-vision-review.md        # optional, only if the Markdown review is requested
+└── work/
+    ├── slide_extract.json
+    ├── visual_inventory.json
+    ├── vision_review_packet.json
+    ├── vision_review.json
+    ├── display_document.json
+    ├── notes.json
+    └── rendered_slides/
 ```
 
-### C2. 全局样式配置
+In the final response, surface only the user-facing deliverables as a short summary plus their file paths:
 
-```python
-# ===== 全局样式配置 =====
-STYLE_CONFIG = {
-    # 字体设置
-    'font_family': 'SimHei',           # 中文字体（备选：Microsoft YaHei）
-    'font_family_en': 'Arial',         # 英文/数字字体
-    'font_size_title': 14,
-    'font_size_normal': 11,
-    'font_size_small': 9,
+- PowerPoint with speaker notes
+- complete display rehearsal document
+- vision-review packet, and the Markdown version only if it was generated
 
-    # 分辨率与输出
-    'dpi': 300,                        # PNG 输出分辨率
-    'figsize': (12, 8),               # 默认画布尺寸（英寸）
-    'background_color': '#FFFFFF',    # 纯白背景
+All other files are supporting artifacts and must stay under `work/`. Do not paste the full per-slide notes into chat by default.
 
-    # 线宽设置
-    'line_width_main': 1.8,           # 主线条宽度
-    'line_width_aux': 1.0,            # 辅助线条宽度
-    'line_width_grid': 0.5,           # 网格线宽度
+### 2. Extract Structured Slide Content
 
-    # 箭头设置
-    'arrow_style': '->',
-    'arrow_head_width': 0.15,
-    'arrow_head_length': 0.2,
+Run:
 
-    # ER 图配色（传统放射状风格 - 简洁黑白灰）
-    'er_entity_fill': '#F5F5F5',       # 浅灰
-    'er_entity_edge': '#000000',       # 黑色
-    'er_relation_fill': '#F5F5F5',     # 浅灰
-    'er_relation_edge': '#000000',     # 黑色
-    'er_attr_fill': '#FFFFFF',         # 白色
-    'er_attr_edge': '#000000',         # 黑色
-    'er_pk_attr_fill': '#FFFFFF',      # 白色（主键同普通属性）
+```bash
+python .trae/skills/ppt-speech-writer/scripts/read_slides.py "/path/to/deck.pptx" \
+  --mode compact \
+  --output "<deck-stem>-speaker-output/work/slide_extract.json"
+```
 
-    # 流程图配色
-    'fc_terminator': '#E8EAF6',
-    'fc_terminator_edge': '#3949AB',
-    'fc_process': '#FFFFFF',
-    'fc_process_edge': '#000000',
-    'fc_decision': '#FFF9C4',
-    'fc_decision_edge': '#F57C00',
+Use `--mode compact` by default. It drops the redundant raw OOXML dump and non-visual geometry so the JSON stays small, while keeping picture bounding boxes that later steps need for region OCR. Use `--mode full` only when you must inspect the complete raw OOXML for a hard-to-read slide.
+
+This output includes:
+
+- text boxes and placeholders
+- tables with row and column text
+- chart titles, categories, series names, values when available, axis and legend text when present in OOXML
+- picture and embedded-object metadata
+- raw OOXML text not exposed by `python-pptx`, including some SmartArt and grouped-shape text
+- existing speaker notes
+
+### 3. Render Slides
+
+Run:
+
+```bash
+python .trae/skills/ppt-speech-writer/scripts/render_slides.py "/path/to/deck.pptx" \
+  --output-dir "<deck-stem>-speaker-output/work/rendered_slides"
+```
+
+The script tries LibreOffice first, then macOS Quick Look. If both fail, use any available local presentation-rendering method and document the limitation.
+
+### 4. Build The Visual Inventory
+
+Run:
+
+```bash
+python .trae/skills/ppt-speech-writer/scripts/visual_inventory.py \
+  --extract "<deck-stem>-speaker-output/work/slide_extract.json" \
+  --rendered-dir "<deck-stem>-speaker-output/work/rendered_slides" \
+  --output "<deck-stem>-speaker-output/work/visual_inventory.json" \
+  --ocr auto \
+  --ocr-scope image-regions
+```
+
+`--ocr-scope image-regions` OCRs only the picture and media crops on each slide, because text boxes, tables, and chart labels already come from the structured XML. This avoids re-OCRing clean vector text and keeps OCR noise out of the inventory. Each result is recorded per shape under `ocr_regions`, with the combined text in `ocr_text`. If Pillow is unavailable or a slide has no picture regions, the script falls back to a full-slide OCR and records the scope it actually used in `ocr_scope`. Use `--ocr-scope full` to force whole-slide OCR for an image-only slide that was not detected as a picture shape.
+
+Use OCR results as evidence, not as unquestioned truth. Correct obvious OCR errors only when the rendered screenshot makes the correction clear.
+
+### 5. Run Vision Review
+
+Create a vision-review packet. The default output is a compact JSON packet: the review prompt and result schema are written once at the top level instead of being repeated on every slide, so the file stays small.
+
+```bash
+python .trae/skills/ppt-speech-writer/scripts/vision_review.py \
+  --inventory "<deck-stem>-speaker-output/work/visual_inventory.json" \
+  --output "<deck-stem>-speaker-output/work/vision_review_packet.json"
+```
+
+The compact JSON packet is the working artifact you fill in. Generate the long Markdown version only when the user wants a human-readable review document; if so, add `--markdown "<deck-stem>-speaker-output/<deck-stem>-vision-review.md"`.
+
+Then inspect the rendered PNGs with a vision-capable agent, browser screenshot inspection, or equivalent image-review tool. Do not skip this step when slides contain charts, tables, SmartArt, diagrams, screenshots, dense figures, or image-only content.
+
+For each reviewed slide, record:
+
+- visual layout and hierarchy
+- visible text not captured by XML
+- chart axes, legends, series, and visible values
+- diagram nodes, arrows, grouping, and flow
+- screenshot UI/document content
+- decorative elements that do not need speaking coverage
+- uncertain elements that require user confirmation
+
+Save the reviewed findings as `<deck-stem>-speaker-output/work/vision_review.json`. If no vision-capable tool is available, stop before writing final notes and tell the user which slides cannot be safely interpreted.
+
+### 6. Inspect Rendered Slides
+
+For every slide with charts, tables, diagrams, SmartArt, screenshots, dense figures, or image-only content, inspect the rendered PNG directly. The inventory is not complete until the visual reading covers:
+
+- all text boxes and titles
+- every table header and important cell
+- every chart axis, legend, series, label, and visible value that matters
+- figure captions, callouts, arrows, annotations, and icons
+- SmartArt nodes and relationships
+- screenshot text, UI labels, and embedded image text
+- citations, footnotes, page numbers, and small labels when they affect interpretation
+
+Use `<deck-stem>-speaker-output/work/vision_review.json` as required evidence for these slides. If a script result and a rendered screenshot disagree, trust the rendered screenshot and mark the mismatch in coverage notes.
+
+### 7. Deck Comprehension Brief
+
+After the full deck has been read, show the user a short brief:
+
+- Thesis: one sentence
+- Structure: section-by-section argument
+- Methods: techniques, models, frameworks, or procedures
+- Key parameters: numbers, metrics, datasets, equations, hyperparameters
+- Recurring terms: technical terms and named entities
+- Visual evidence: charts, tables, screenshots, diagrams, or SmartArt that drive the talk
+- Gaps: any element that is visible but not reliably interpretable
+
+If there are material gaps, ask before drafting.
+
+### 8. Gather Speaker Context
+
+Ask only for missing context:
+
+- speaking duration
+- audience and prior knowledge
+- occasion
+- output language
+- glossary table: `on` or `off`, default `on`. When `off`, skip the Key Parameters And Methods table everywhere it appears.
+- output filename, defaulting to `<input>-with-notes.pptx`
+
+Once the speaking duration and output language are known, compute the word or character budget with the Timing And Pacing Model before drafting. State the total budget and the rough per-slide budget to the user so the talk is sized to the clock from the start. If the user has reported that past talks ran long, ask for their real pace and recompute with it.
+
+### 9. Confirm Narrative Arc
+
+Provide three short lines and get confirmation:
+
+- Opening: how the talk enters the topic
+- Middle: the central insight or turning point
+- Close: what the audience should know, accept, or do
+
+### 10. Write Slide Notes
+
+For each slide, produce two versions from the same source:
+
+Display version shown to the user:
+
+```text
+[Slide X - Title]
+----------------
+Spoken text grounded in this slide.
+
+[PAUSE]
+[EMPHASIS: term]
+
+Transition: one sentence pointing into the next slide.
+```
+
+Clean version injected into `.pptx`:
+
+- no slide label
+- no separator
+- no pause or emphasis markers
+- no transition line
+
+Per-slide rules:
+
+- Open with the slide's thesis sentence.
+- Address every visible element in the inventory, weighted by importance.
+- For charts, state the headline, axes, legend or series, and the specific visible values that support the point.
+- For tables, explain what rows and columns represent, then name the comparison that matters.
+- For screenshots, identify the visible UI or document state and read important labels.
+- For diagrams or SmartArt, explain the nodes, arrows, grouping, and implied flow.
+- For equations, name the formula, variables, and role in this work.
+- For image-only slides, describe only what the rendered slide supports.
+- Keep academic sentences clear and spoken. Prefer sentences under 20 words.
+- Avoid filler such as "as we can see", "let me show you", and "moving on".
+- Stay within the slide's word or character budget from the Timing And Pacing Model. If the evidence needs more, compress or recommend splitting the slide rather than overrunning.
+- Place `[PAUSE]` deliberately after a thesis or before a key number, and count each one toward the slide's reserved time.
+
+### 11. Key Parameters And Methods
+
+Only build this table when the glossary toggle from step 8 is `on`. If it is `off`, skip this step, leave `key_parameters_methods` empty in the display document, and do not mention a glossary in the final summary.
+
+When glossary is `on`, include a table after the display notes:
+
+| Term | Type | Slide(s) | Definition |
+|------|------|----------|------------|
+
+Include methods, models, architectures, datasets, metrics, formulas, acronyms, hyperparameters, and technical terms. Definitions must say both what the term means and how it functions in this deck.
+
+### 12. Build A Complete Display Document
+
+The display version must not remain only as chat text. Build a complete rehearsal document containing:
+
+- title and deck path
+- Deck Comprehension Brief
+- Narrative Arc
+- Slide-by-Slide Display Notes
+- Key Parameters And Methods table, only when the glossary toggle is `on`
+- Timing table, with per-slide `budget` and `pauses` alongside the actual `word_count`
+- coverage notes and uncertain visual elements
+- injection log placeholder or final injection log
+
+Create `<deck-stem>-speaker-output/work/display_document.json` with this shape:
+
+```json
+{
+  "title": "Speaker Notes Display Version",
+  "deck_path": "/path/to/deck.pptx",
+  "comprehension_brief": {"Thesis": "...", "Structure": "..."},
+  "narrative_arc": {"Opening": "...", "Middle": "...", "Close": "..."},
+  "slides": [
+    {"slide": 1, "title": "Title", "display_notes": "[Slide 1 - Title]\\n..."}
+  ],
+  "key_parameters_methods": [
+    {"term": "...", "type": "Method", "slides": "1, 4", "definition": "..."}
+  ],
+  "timing": [
+    {"slide": 1, "title": "Title", "time": "0:45", "word_count": 110, "budget": 120, "pauses": 2}
+  ],
+  "coverage_notes": ["Slide 3 chart labels verified by rendered screenshot."],
+  "injection_log": []
 }
 ```
 
-### C3. 输出格式要求
-
-| 格式 | 用途 | 参数 |
-|------|------|------|
-| PNG | 论文插图/预览 | dpi=300, quality=95 |
-| PDF | 矢量输出/印刷 | bbox_inches='tight' |
-| SVG | 网页/可编辑 | format='svg' |
-
-### C4. 中文渲染保障
-
-```python
-def setup_chinese_font():
-    """配置中文字体，防止乱码"""
-    plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'STHeiti']
-    plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
-```
-
----
-
-## D. 工作流程
-
-### 步骤 1：接收需求
-
-当用户触发本 Skill 时，首先确认以下信息：
-
-**对于 ER 图**：
-- [ ] 所有实体名称及中英文对照
-- [ ] 每个实体的属性列表（标识主键）
-- [ ] 实体间的关系描述
-- [ ] 每个关系的基数（1:1, 1:n, m:n）
-
-**对于流程图**：
-- [ ] 流程起始点和终止点
-- [ ] 所有处理步骤及其顺序
-- [ ] 所有判断条件及分支走向
-- [ ] 是否包含循环/并行结构
-
-**对于架构图**：
-- [ ] 系统总体层级划分
-- [ ] 每层的模块/组件列表
-- [ ] 模块间的依赖/调用关系
-- [ ] 是否需要展示外部系统交互
-
-### 步骤 2：选择模板
-
-根据图表类型从 `scripts/diagram_base.py` 选择基础模板：
-- ER 图 → `create_er_star_template()` （传统放射状风格）
-- 流程图 → `create_flowchart_template()`
-- 架构图 → `create_architecture_template()`
-
-### 步骤 3：生成代码
-
-基于模板编写完整的绘图脚本，确保：
-- 遵循对应图表的标准规范
-- 使用 `diagram_base.py` 中的工具函数
-- 包含完整的中文注释
-
-### 步骤 4：执行渲染
+Then run:
 
 ```bash
-python your_diagram_script.py
+python .trae/skills/ppt-speech-writer/scripts/write_display_docx.py \
+  --input "<deck-stem>-speaker-output/work/display_document.json" \
+  --output "<deck-stem>-speaker-output/<deck-stem>-display.docx"
 ```
 
-### 步骤 5：质量检查
+If `python-docx` is unavailable, the script writes a Markdown fallback next to the requested `.docx`. Report which output was created.
 
-检查清单：
-- [ ] 无中文乱码
-- [ ] 符号形状正确
-- [ ] 连线符合规范（正交布线）
-- [ ] 文字无重叠/截断
-- [ ] 配色符合标准
-- [ ] 图片完整无截断
-- [ ] **【ER图专项】属性椭圆之间无重叠、无接触**
-- [ ] **【ER图专项】不同实体的属性之间间距充足**
-- [ ] **【ER图专项】属性与连线无交叉**
+### 13. Coverage Quality Check
 
-### 步骤 6：交付输出
+Before injection, verify:
 
-返回给用户的文件清单：
-- `fig-X-Y_type.png` - 高清位图（300dpi）
-- `fig-X-Y_type.pdf` - 矢量PDF（用于LaTeX插入）
-- `fig-X-Y_type.svg` - 可编辑矢量图（可选）
+- every slide has an inventory entry
+- every slide has a rendered image or documented render failure
+- every visually complex slide has a `work/vision_review.json` entry
+- image-only and screenshot-heavy slides received OCR or visual inspection
+- every inventory item is covered in display notes or explicitly marked irrelevant
+- every chart axis, legend, and important visible value is handled
+- every table header and important comparison is handled
+- no spoken claim exceeds the slide evidence
+- total spoken time, including pauses, transitions, and buffer, fits the target duration, and no slide exceeds its per-slide budget
+- the glossary table is present only when the toggle is `on`, and when present every key term has a definition
+- a complete display document was generated
+- only user-facing deliverables are at the output root; intermediate JSON and rendered images are under `work/`
+- clean notes have no labels, separators, pause markers, emphasis markers, or transition lines
+- `work/notes.json` covers slides `1..N`
 
----
+Fix violations before injection.
 
-## E. 输出规范
+### 14. Inject Notes
 
-### E1. 目录结构
+Create `<deck-stem>-speaker-output/work/notes.json`:
 
-```
-project_root/
-├── figures/                    # 或 thesis_figures/
-│   ├── fig-3-1_er_user_order.png
-│   ├── fig-3-1_er_user_order.pdf
-│   ├── fig-3-2_flow_login.png
-│   ├── fig-3-2_flow_login.pdf
-│   ├── fig-4-1_arch_system.png
-│   └── fig-4-1_arch_system.pdf
-└── scripts/
-    └── draw_figures.py         # 绘图源码
+```json
+[
+  {"slide": 1, "notes": "Clean spoken text for slide 1."},
+  {"slide": 2, "notes": "Clean spoken text for slide 2."}
+]
 ```
 
-### E2. 文件命名约定
+Then run:
 
-格式：`fig-{章节编号}-{图序号}_{类型简写}.{扩展名}`
-
-示例：
-- `fig-3-1_er_database.png` - 第3章第1张图，ER图
-- `fig-4-2_flow_payment.png` - 第4章第2张图，流程图
-- `fig-5-1_arch_module.png` - 第5章第1张图，架构图
-
-### E3. LaTeX 引用示例
-
-```latex
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.8\textwidth]{figures/fig-3-1_er_user_order.pdf}
-    \caption{用户-订单-商品实体关系图}
-    \label{fig:er-user-order}
-\end{figure}
+```bash
+python .trae/skills/ppt-speech-writer/scripts/inject_notes.py \
+  --input "/path/to/deck.pptx" \
+  --output "<deck-stem>-speaker-output/<deck-stem>-with-notes.pptx" \
+  --notes "<deck-stem>-speaker-output/work/notes.json" \
+  --mode replace
 ```
 
----
+Modes:
 
-## F. 常见问题与修复
+- `replace`: overwrite existing notes
+- `append`: append after existing notes
+- `skip-if-present`: only fill empty notes panes
 
-| 问题现象 | 可能原因 | 解决方案 |
-|----------|----------|----------|
-| **中文乱码/方框** | 字体未安装或未指定 | 安装 SimHei 字体或在代码中指定 `plt.rcParams['font.sans-serif'] = ['SimHei']` |
-| **曲线不美观** | 使用了 `plot()` 直接连点 | 改用 `ortho_line()` 正交折线函数 |
-| **符号不规范** | 使用了错误的形状参数 | 严格按国标符号表选择形状（矩形/菱形/椭圆等） |
-| **图片截断** | `figsize` 或坐标范围不足 | 增大画布尺寸或调整 `xlim/ylim` 范围 |
-| **文字重叠** | 元素间距过小 | 增加 `pad_x/pad_y` 参数，增大节点间距 |
-| **箭头不可见** | 线宽过大或颜色相同 | 减小线宽或使用对比色箭头 |
-| **PDF字体缺失** | 嵌入字体设置问题 | 在 `savefig()` 中添加 `metadata={'Creator': 'matplotlib'}` |
-| **连线交叉过多** | 布局不合理 | 调整节点位置，优化拓扑排序 |
+After injection, update `<deck-stem>-speaker-output/work/display_document.json` with the injection log and rerun `write_display_docx.py` so the display document is complete.
 
----
+### 15. Final Delivery
 
-## G. 快速参考
+The default chat response is a short summary plus file paths. Do not paste the full per-slide speaker notes into chat. The complete script already lives in the display document; pasting it again is redundant and buries the deliverables.
 
-### G1. 常用绘图函数速查
+Return:
 
-```python
-from diagram_base import (
-    draw_terminator,      # 起止符 (x, y, text)
-    draw_process,         # 处理框 (x, y, width, height, text)
-    draw_decision,        # 判断框 (x, y, size, text)
-    draw_document,        # 文档符号 (x, y, width, height, text)
-    er_entity,            # ER实体矩形 (cx, cy, w, h, name)
-    er_attr_ellipse,      # ER属性椭圆 (ax, ay, text, is_pk=False) — 放射状分布
-    er_relation_diamond,  # ER关系菱形 (cx, cy, w, h, name)
-    er_connect,           # ER连线 (start, end, label_start, label_end)
-    ortho_line,           # 正交折线 (points_list)
-    h_line, v_line,       # 水平/垂直线
-    save_fig,             # 多格式保存 (filename, formats=['png','pdf'])
-    setup_chinese_font,   # 中文字体配置
-)
-```
+1. A short summary: thesis in one line, slide count, output language, glossary on or off, and target duration versus estimated spoken time from the timing table. Flag any slide that overran its budget.
+2. File paths only:
+   - PowerPoint with speaker notes: `<deck-stem>-speaker-output/<deck-stem>-with-notes.pptx`
+   - Display rehearsal document: `<deck-stem>-speaker-output/<deck-stem>-display.docx` or `.md`
+   - Vision-review packet: `<deck-stem>-speaker-output/work/vision_review_packet.json`, plus the Markdown version only if it was generated
+3. Coverage notes for any uncertain visual element.
+4. Mention that all intermediate evidence files are under `<deck-stem>-speaker-output/work/`.
+5. Offer to paste the full per-slide script on request, for example: reply "show notes" and I will paste the complete script here.
 
-### G2. 预设颜色速查
+## Dependency Guidance
 
-```python
-# ER 图（传统放射状风格 - 简洁黑白灰）
-ENTITY_FILL = '#F5F5F5'      # 浅灰
-ENTITY_EDGE = '#000000'      # 黑色
-RELATION_FILL = '#F5F5F5'    # 浅灰
-RELATION_EDGE = '#000000'    # 黑色
-ATTR_FILL = '#FFFFFF'        # 白色
-ATTR_EDGE = '#000000'        # 黑色
+Use installed tools first. Do not install packages unless the user approves. Helpful optional tools:
 
-# 流程图
-TERM_FILL = '#E8EAF6'        # 浅靛蓝
-TERM_EDGE = '#3949AB'        # 靛蓝
-PROC_FILL = '#FFFFFF'        # 白色
-PROC_EDGE = '#000000'        # 黑色
-DECISION_FILL = '#FFF9C4'    # 浅黄
-DECISION_EDGE = '#F57C00'    # 橙色
-```
+- `python-pptx` for PowerPoint object extraction and notes injection
+- LibreOffice or `soffice` for high-quality slide rendering
+- macOS `qlmanage` as a rendering fallback
+- `tesseract` for OCR
+- `Pillow` for image handling
+- vision-capable inspection tools for rendered slide screenshots
+- `python-docx` for the complete display-version Word document
 
----
-
-## H. 扩展阅读
-
-详细的标准规范请参考以下参考文档：
-
-- **ER 图标准**：`references/er-diagram-standard.md`
-- **流程图标准**：`references/flowchart-standard.md`
-- **架构图标准**：`references/architecture-diagram-standard.md`
-
-示例代码请查看：
-
-- **ER 图示例**：`scripts/examples/example_er.py`
-- **流程图示例**：`scripts/examples/example_flowchart.py`
-- **架构图示例**：`scripts/examples/example_architecture.py`
-
-基础工具函数源码：
-
-- **绘图工具库**：`scripts/diagram_base.py`
+If a dependency is missing, continue with the strongest available evidence and clearly report the limitation.
